@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HabitFlow</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3C13 12 8 18 8 24a12 12 0 0024 0c0-6-5-12-12-21z' fill='%23DCA84C'/%3E%3Cpath d='M14 24l5 5 9-11' stroke='%231B181C' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#121013; --surface:#1B181C; --line:rgba(255,255,255,0.09); --line-soft:rgba(255,255,255,0.05);
+  --text:#F4F0E9; --sub:#8C8790; --gold:#DCA84C; --gold-soft:#B98B3A; --teal:#5C9AA6; --danger:#C96B5C;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  box-sizing:border-box;
+}
+[data-theme="light"]{
+  --bg:#F6F2EA; --surface:#FFFDF9; --line:rgba(20,15,10,0.10); --line-soft:rgba(20,15,10,0.06);
+  --text:#1C1712; --sub:#8A8177; --gold:#C99038; --gold-soft:#A97426; --teal:#4A8790; --danger:#B4483A;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{font-family:'Manrope',sans-serif; background:var(--bg); color:var(--text); min-height:100%; transition:background .25s ease, color .25s ease; position:relative; overflow-x:hidden;}
+
+/* Living background: soft moving color fields + fine grain */
+.bg-field{position:fixed; inset:0; z-index:0; overflow:hidden; filter:blur(70px);}
+.blob{position:absolute; border-radius:50%; opacity:0.30;}
+.blob.b1{width:280px; height:280px; background:var(--gold); top:-60px; left:-60px; animation:driftA 26s ease-in-out infinite alternate;}
+.blob.b2{width:240px; height:240px; background:var(--teal); bottom:10%; right:-70px; animation:driftB 32s ease-in-out infinite alternate;}
+.blob.b3{width:200px; height:200px; background:var(--gold-soft); bottom:-80px; left:20%; animation:driftC 24s ease-in-out infinite alternate;}
+[data-theme="light"] .blob{opacity:0.22;}
+@keyframes driftA{from{transform:translate(0,0);} to{transform:translate(40px,60px);}}
+@keyframes driftB{from{transform:translate(0,0);} to{transform:translate(-30px,-50px);}}
+@keyframes driftC{from{transform:translate(0,0);} to{transform:translate(50px,-30px);}}
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:0.4; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/></svg>");
+}
+.wrap{max-width:460px; margin:0 auto; padding:22px 20px 112px; position:relative; z-index:2;}
+
+header{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;}
+.brand{display:flex; align-items:center; gap:10px;}
+.brand svg{width:30px; height:30px; flex-shrink:0;}
+.title-block .eyebrow{color:var(--sub); font-size:12.5px; letter-spacing:0.02em;}
+h1{font-family:'Fraunces',serif; font-size:22px; font-weight:600; margin-top:3px;}
+.theme-toggle{width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:transparent; color:var(--text); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease; flex-shrink:0;}
+.theme-toggle:hover{border-color:var(--gold);}
+
+.flow-meter{position:relative; height:118px; border-radius:18px; overflow:hidden; border:1px solid var(--line); background:var(--surface); margin-bottom:18px;}
+.flow-fill{position:absolute; left:-15%; right:-15%; bottom:0; height:0%; transition:height .7s cubic-bezier(.4,0,.2,1);}
+.wave{position:absolute; left:0; top:-16px; width:220%; height:44px;}
+.wave1{animation:waveMove 7s linear infinite; opacity:0.95;}
+.wave2{animation:waveMove 11s linear infinite reverse; opacity:0.55;}
+@keyframes waveMove{from{transform:translateX(0);} to{transform:translateX(-50%);}}
+.flow-body{position:absolute; left:0; right:0; bottom:-16px; top:28px; background:var(--gold);}
+.flow-label{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Fraunces',serif; z-index:3;}
+.flow-label .num{font-size:38px; font-weight:600; line-height:1; color:var(--text);}
+.flow-label .cap{font-family:'Manrope',sans-serif; font-size:12px; color:var(--sub); margin-top:4px;}
+
+.level-track{margin:0 2px 6px;}
+.level-top{display:flex; justify-content:space-between; font-size:12.5px; color:var(--sub); margin-bottom:6px;}
+.level-bar{height:5px; border-radius:3px; background:var(--line); overflow:hidden;}
+.level-fill{height:100%; background:var(--gold); border-radius:3px; transition:width .5s ease;}
+
+.section-title{display:flex; justify-content:space-between; align-items:baseline; margin:28px 0 12px; font-size:12.5px; color:var(--sub);}
+
+.habit{display:flex; align-items:center; gap:0; padding:14px 0; border-bottom:1px solid var(--line-soft); position:relative;}
+.habit .bar{width:3px; height:30px; border-radius:2px; margin-right:14px; flex-shrink:0;}
+.habit .icon-wrap{width:26px; height:26px; margin-right:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+.habit .icon-wrap svg{width:19px; height:19px; stroke:currentColor;}
+.habit .body{flex:1; min-width:0; cursor:pointer;}
+.habit.done .name{color:var(--sub); text-decoration:line-through; text-decoration-color:var(--line);}
+.habit .name{font-weight:600; font-size:15px;}
+.habit .meta{color:var(--sub); font-size:12px; margin-top:2px;}
+.habit .meta .flame{color:var(--gold);}
+.check{width:27px; height:27px; border-radius:50%; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; background:transparent; color:transparent; font-size:13px; transition:all .18s ease;}
+.check.on{background:var(--gold); border-color:var(--gold); color:var(--surface); transform:scale(1.05);}
+.empty{color:var(--sub); font-size:14px; padding:20px 0;}
+
+.fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:20; width:52px; height:52px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:var(--gold); font-size:24px; font-weight:500; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,0.25);}
+.tabbar{position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; padding:12px 0 calc(12px + env(safe-area-inset-bottom,0px)); z-index:15; background:linear-gradient(to top, var(--bg) 65%, transparent);}
+.tabbar .inner{display:flex; gap:2px; border:1px solid var(--line); border-radius:12px; padding:3px; background:var(--surface);}
+.tabbar button{border:none; background:transparent; color:var(--sub); font-family:inherit; font-weight:600; font-size:13px; padding:8px 18px; border-radius:9px; cursor:pointer; transition:all .15s ease;}
+.tabbar button.active{background:var(--gold); color:var(--surface);}
+
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:30; opacity:0; pointer-events:none; transition:opacity .2s ease;}
+.overlay.open{opacity:1; pointer-events:auto;}
+.sheet{width:100%; max-width:460px; background:var(--surface); border-top:1px solid var(--line); border-radius:20px 20px 0 0; padding:24px 20px calc(24px + env(safe-area-inset-bottom,0px)); transform:translateY(24px); transition:transform .22s ease; max-height:82vh; overflow-y:auto;}
+.overlay.open .sheet{transform:translateY(0);}
+.sheet h2{font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin-bottom:18px;}
+label{display:block; font-size:12px; color:var(--sub); font-weight:500; margin:16px 0 8px;}
+input[type=text]{width:100%; background:transparent; border:0; border-bottom:1px solid var(--line); color:var(--text); padding:8px 0; font-size:16px; font-family:inherit;}
+input[type=text]:focus{outline:none; border-bottom-color:var(--gold);}
+.icon-row, .color-row, .freq-row{display:flex; gap:8px; flex-wrap:wrap;}
+.icon-btn{width:38px; height:38px; border-radius:9px; background:transparent; border:1px solid var(--line); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text);}
+.icon-btn svg{width:18px; height:18px;}
+.icon-btn.sel{border-color:var(--gold); background:var(--line-soft); color:var(--gold);}
+.color-dot{width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent;}
+.color-dot.sel{border-color:var(--text);}
+.freq-row button{flex:1; padding:9px 0; border-radius:9px; border:1px solid var(--line); background:transparent; color:var(--sub); font-family:inherit; font-weight:600; font-size:12px; cursor:pointer;}
+.freq-row button.sel{background:var(--gold); color:var(--surface); border-color:var(--gold);}
+.sheet-actions{display:flex; gap:10px; margin-top:22px;}
+.btn{flex:1; padding:12px 0; border-radius:10px; border:1px solid var(--line); font-family:inherit; font-weight:600; font-size:14px; cursor:pointer; background:transparent; color:var(--text);}
+.btn.primary{background:var(--gold); color:var(--surface); border-color:var(--gold);}
+.btn.text-danger{border:none; color:var(--danger); font-size:13px; width:100%; margin-top:12px; background:transparent;}
+
+.overview-row{display:flex; gap:10px; margin-bottom:22px;}
+.ov-tile{flex:1; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 10px; text-align:center;}
+.ov-tile .v{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
+.ov-tile .l{color:var(--sub); font-size:11px; margin-top:3px;}
+
+.insight-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:22px;}
+.insight-card .ih{display:flex; align-items:center; gap:8px; font-weight:700; font-size:13px; margin-bottom:10px; color:var(--gold);}
+.insight-card .ih svg{width:15px; height:15px;}
+.insight-line{font-size:13.5px; color:var(--text); padding:6px 0; border-top:1px solid var(--line-soft);}
+.insight-line:first-of-type{border-top:none; padding-top:0;}
+
+.heatmap{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:6px;}
+.hcell{aspect-ratio:1; border-radius:4px; background:var(--line);}
+.hm-legend{display:flex; justify-content:flex-end; gap:4px; align-items:center; font-size:10px; color:var(--sub); margin-bottom:22px;}
+.hm-legend .sw{width:9px; height:9px; border-radius:2px;}
+
+.stat-row{padding:16px 0; border-bottom:1px solid var(--line-soft);}
+.stat-row .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;}
+.stat-row .name{font-weight:600; font-size:14px; display:flex; align-items:center; gap:6px;}
+.stat-row .name svg{width:14px; height:14px;}
+.stat-row .streak{font-size:12px; color:var(--gold);}
+.bars{display:flex; gap:5px; align-items:flex-end; height:36px;}
+.bar-col{flex:1; border-radius:3px; background:var(--line); min-height:3px;}
+.bar-col.fill{background:var(--gold);}
+.daylabels{display:flex; gap:5px; margin-top:6px;}
+.daylabels span{flex:1; text-align:center; font-size:10px; color:var(--sub);}
+.screen{display:none;}
+.screen.active{display:block;}
+</style>
+</head>
+<body>
+
+<div class="bg-field"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+<svg style="display:none">
+  <symbol id="ic-water" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8 8 5 12 5 15a7 7 0 0014 0c0-3-3-7-7-13z"/></symbol>
+  <symbol id="ic-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4.5" r="1.6"/><path d="M9 21l2-6 3-1.5-1-5-4 1-2 4"/><path d="M11 13.5l4 1.5 3 5.5"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c3-1.5 6-1.5 8 0v14c-2-1.5-5-1.5-8 0V5z"/><path d="M20 5c-3-1.5-6-1.5-8 0v14c2-1.5 5-1.5 8 0V5z"/></symbol>
+  <symbol id="ic-meditate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2"/><path d="M6 20c1-4 3-6 6-6s5 2 6 6"/><path d="M4 16c2 1 4-1 8-1s6 2 8 1"/></symbol>
+  <symbol id="ic-food" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0018 0"/><path d="M3 12h18"/><path d="M12 12V4"/></symbol>
+  <symbol id="ic-sleep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14a8 8 0 11-8-10 6.5 6.5 0 008 10z"/></symbol>
+  <symbol id="ic-write" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/></symbol>
+  <symbol id="ic-nosmoke" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15h13v3H3z"/><path d="M3 3l18 18"/></symbol>
+  <symbol id="ic-strength" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6M20 9v6M7 12h10"/><rect x="2" y="8" width="3" height="8" rx="1"/><rect x="19" y="8" width="3" height="8" rx="1"/></symbol>
+  <symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="ic-plant" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V10"/><path d="M12 10c0-4-4-6-8-5 1 4 4 6 8 5z"/><path d="M12 10c0-4 4-6 8-5-1 4-4 6-8 5z"/></symbol>
+  <symbol id="ic-art" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 100 18c1.5 0 2-1 2-2s-.5-1.5-.5-2.5S14.5 15 16 15a5 5 0 005-5c0-4-4-7-9-7z"/><circle cx="8" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="10" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="ic-spark" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 40 40"><path d="M20 3C13 12 8 18 8 24a12 12 0 0024 0c0-6-5-12-12-21z" fill="var(--gold)"/><path d="M14 24l5 5 9-11" stroke="var(--surface)" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="title-block">
+        <div class="eyebrow" id="dateLabel"></div>
+        <h1 id="greeting">Привет</h1>
+      </div>
+    </div>
+    <button class="theme-toggle" id="themeToggle">◐</button>
+  </header>
+
+  <section id="screenHome" class="screen active">
+    <div class="flow-meter">
+      <div class="flow-fill" id="flowFill" style="height:0%">
+        <div class="flow-body"></div>
+        <svg class="wave wave1" viewBox="0 0 1200 44" preserveAspectRatio="none"><path d="M0,22 C150,44 350,0 600,22 C850,44 1050,0 1200,22 L1200,44 L0,44 Z" fill="var(--gold)"/></svg>
+        <svg class="wave wave2" viewBox="0 0 1200 44" preserveAspectRatio="none"><path d="M0,22 C150,0 350,44 600,22 C850,0 1050,44 1200,22 L1200,44 L0,44 Z" fill="var(--gold-soft)"/></svg>
+      </div>
+      <div class="flow-label"><div class="num"><span id="heroPct">0</span>%</div><div class="cap" id="doneCount">0 из 0 сегодня</div></div>
+    </div>
+    <div class="level-track">
+      <div class="level-top"><span id="levelLabel">Уровень 1</span><span id="pointsToNext">0 / 100</span></div>
+      <div class="level-bar"><div class="level-fill" id="levelFill" style="width:0%"></div></div>
+    </div>
+    <div class="section-title"><span>Сегодня</span><span id="dueCount"></span></div>
+    <div id="habitList"></div>
+  </section>
+
+  <section id="screenStats" class="screen">
+    <div class="overview-row" id="overviewRow"></div>
+    <div class="insight-card">
+      <div class="ih"><svg><use href="#ic-spark"/></svg><span>Инсайты</span></div>
+      <div id="insightsBody"></div>
+    </div>
+    <div class="section-title"><span>Активность за месяц</span></div>
+    <div class="heatmap" id="heatmap"></div>
+    <div class="hm-legend"><span>меньше</span><span class="sw" style="background:var(--line)"></span><span class="sw" style="background:var(--gold-soft);opacity:.5"></span><span class="sw" style="background:var(--gold)"></span><span>больше</span></div>
+    <div class="section-title"><span>По привычкам</span></div>
+    <div id="statsList"></div>
+  </section>
+
+  <button class="fab" id="fabAdd">+</button>
+  <div class="tabbar"><div class="inner"><button class="active" data-tab="home">Главная</button><button data-tab="stats">Статистика</button></div></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2 id="sheetTitle">Новая привычка</h2>
+    <label>Название</label>
+    <input type="text" id="inpName" placeholder="Например, Пить воду" maxlength="30">
+    <label>Иконка</label>
+    <div class="icon-row" id="iconRow"></div>
+    <label>Цвет</label>
+    <div class="color-row" id="colorRow"></div>
+    <label>Частота</label>
+    <div class="freq-row" id="freqRow">
+      <button data-freq="daily" class="sel">Ежедневно</button>
+      <button data-freq="weekday">По будням</button>
+      <button data-freq="other">Через день</button>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn" id="btnCancel">Отмена</button>
+      <button class="btn primary" id="btnSave">Сохранить</button>
+    </div>
+    <button class="btn text-danger" id="btnDelete" style="display:none;">Удалить привычку</button>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+const ICONS = ['water','run','book','meditate','food','sleep','write','nosmoke','strength','target','plant','art'];
+const COLORS = ['#DCA84C','#C96B5C','#5C9AA6','#7A9E6B','#8E7CC9','#D9D5CC'];
+const todayKey = () => new Date().toISOString().slice(0,10);
+const load = () => JSON.parse(localStorage.getItem('habitflow_data') || 'null') || { habits: [], points: 0 };
+const save = (d) => localStorage.setItem('habitflow_data', JSON.stringify(d));
+let data = load();
+let editingId = null, selIcon = ICONS[0], selColorIdx = 0, selFreq = 'daily';
+
+function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); localStorage.setItem('habitflow_theme', t); document.getElementById('themeToggle').textContent = t === 'light' ? '◑' : '◐'; }
+applyTheme(localStorage.getItem('habitflow_theme') || 'dark');
+document.getElementById('themeToggle').addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'));
+
+function haptic(style){ if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(style || 'light'); }
+function greetName(){ const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user; return u && u.first_name ? u.first_name : 'Привет'; }
+document.getElementById('greeting').textContent = greetName();
+document.getElementById('dateLabel').textContent = 'HabitFlow · ' + new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
+
+function isDueToday(h){
+  const d = new Date().getDay();
+  if (h.freq === 'weekday') return d >= 1 && d <= 5;
+  if (h.freq === 'other') { const start = new Date(h.created); const diff = Math.floor((new Date() - start) / 86400000); return diff % 2 === 0; }
+  return true;
+}
+function isDoneToday(h){ return (h.log || []).includes(todayKey()); }
+function calcStreak(h){
+  let streak = 0; let d = new Date();
+  while (true){ const k = d.toISOString().slice(0,10); if ((h.log||[]).includes(k)) { streak++; d.setDate(d.getDate()-1); } else break; }
+  return streak;
+}
+function longestStreak(log){
+  if (!log || !log.length) return 0;
+  const sorted = [...log].sort();
+  let best = 1, cur = 1;
+  for (let i = 1; i < sorted.length; i++){
+    const prev = new Date(sorted[i-1]), curD = new Date(sorted[i]);
+    if ((curD - prev) === 86400000){ cur++; best = Math.max(best, cur); } else cur = 1;
+  }
+  return best;
+}
+
+let lastPct = 0;
+function animatePct(from, to){
+  const start = performance.now(); const dur = 600;
+  function step(t){ const p = Math.min(1,(t-start)/dur); document.getElementById('heroPct').textContent = Math.round(from+(to-from)*p); if (p<1) requestAnimationFrame(step); }
+  requestAnimationFrame(step);
+}
+
+function renderHome(){
+  const due = data.habits.filter(isDueToday);
+  const done = due.filter(isDoneToday).length;
+  const total = due.length;
+  const pct = total ? Math.round((done/total)*100) : 0;
+  animatePct(lastPct, pct); lastPct = pct;
+  document.getElementById('flowFill').style.height = pct + '%';
+  document.getElementById('doneCount').textContent = `${done} из ${total} сегодня`;
+  document.getElementById('dueCount').textContent = total ? `${total}` : '';
+  const level = Math.floor(data.points/100) + 1, into = data.points % 100;
+  document.getElementById('levelLabel').textContent = `Уровень ${level}`;
+  document.getElementById('pointsToNext').textContent = `${into} / 100`;
+  document.getElementById('levelFill').style.width = into + '%';
+
+  const list = document.getElementById('habitList');
+  list.innerHTML = '';
+  if (!due.length){ list.innerHTML = '<div class="empty">На сегодня привычек нет. Добавьте первую.</div>'; return; }
+  due.forEach(h => {
+    const doneNow = isDoneToday(h), streak = calcStreak(h);
+    const el = document.createElement('div');
+    el.className = 'habit' + (doneNow ? ' done' : '');
+    el.innerHTML = `
+      <div class="bar" style="background:${h.color}"></div>
+      <div class="icon-wrap" style="color:${h.color}"><svg><use href="#ic-${h.icon}"/></svg></div>
+      <div class="body"><div class="name">${h.name}</div><div class="meta">${freqLabel(h.freq)}${streak>0?' · <span class="flame">🔥 '+streak+'</span>':''}</div></div>
+      <button class="check ${doneNow?'on':''}" data-id="${h.id}">✓</button>`;
+    el.querySelector('.body').addEventListener('click', () => openSheet(h));
+    el.querySelector('.check').addEventListener('click', (e) => { e.stopPropagation(); toggleDone(h.id); });
+    list.appendChild(el);
+  });
+}
+function freqLabel(f){ return f === 'daily' ? 'Ежедневно' : f === 'weekday' ? 'По будням' : 'Через день'; }
+
+function toggleDone(id){
+  const h = data.habits.find(x => x.id === id);
+  const k = todayKey(); h.log = h.log || [];
+  const idx = h.log.indexOf(k);
+  if (idx >= 0){ h.log.splice(idx,1); data.points = Math.max(0, data.points - 10); }
+  else { h.log.push(k); data.points += 10; haptic('light'); }
+  save(data); renderHome(); renderStats();
+}
+
+function generateInsights(){
+  const lines = [];
+  if (!data.habits.length) return ['Добавь первую привычку, чтобы увидеть инсайты.'];
+  let best = null, worst = null;
+  data.habits.forEach(h => {
+    const s = calcStreak(h);
+    if (!best || s > calcStreak(best)) best = h;
+    const last7 = [...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.toISOString().slice(0,10);});
+    const misses = last7.filter(k => !(h.log||[]).includes(k)).length;
+    if (!worst || misses > worst.misses) worst = { h, misses };
+  });
+  if (best && calcStreak(best) >= 2) lines.push(`🔥 «${best.name}» — серия ${calcStreak(best)} дней подряд, лучший результат сейчас.`);
+  if (worst && worst.misses >= 4) lines.push(`«${worst.h.name}» пропущена ${worst.misses} из 7 последних дней — может, снизить частоту до «через день»?`);
+  const totalToday = data.habits.filter(isDueToday).length;
+  const doneToday = data.habits.filter(isDueToday).filter(isDoneToday).length;
+  if (totalToday && doneToday === totalToday) lines.push('Все привычки на сегодня закрыты — отличный день.');
+  else if (totalToday) lines.push(`Осталось ${totalToday - doneToday} из ${totalToday} привычек на сегодня.`);
+  if (!lines.length) lines.push('Продолжай в том же темпе — данных пока немного для более точных выводов.');
+  return lines.slice(0,3);
+}
+
+function renderStats(){
+  const totalCompletions = data.habits.reduce((s,h) => s + (h.log||[]).length, 0);
+  const bestStreakEver = data.habits.reduce((m,h) => Math.max(m, longestStreak(h.log||[])), 0);
+  document.getElementById('overviewRow').innerHTML = `
+    <div class="ov-tile"><div class="v">${totalCompletions}</div><div class="l">выполнений всего</div></div>
+    <div class="ov-tile"><div class="v">${bestStreakEver}</div><div class="l">лучшая серия</div></div>
+    <div class="ov-tile"><div class="v">${data.habits.length}</div><div class="l">привычек</div></div>`;
+
+  document.getElementById('insightsBody').innerHTML = generateInsights().map(t => `<div class="insight-line">${t}</div>`).join('');
+
+  const days35 = [...Array(35)].map((_,i) => { const d = new Date(); d.setDate(d.getDate()-(34-i)); return d.toISOString().slice(0,10); });
+  document.getElementById('heatmap').innerHTML = days35.map(k => {
+    const total = data.habits.length;
+    const doneCt = data.habits.filter(h => (h.log||[]).includes(k)).length;
+    const ratio = total ? doneCt/total : 0;
+    const bg = ratio === 0 ? 'var(--line)' : ratio < 0.5 ? 'var(--gold-soft)' : 'var(--gold)';
+    const op = ratio === 0 ? 1 : ratio < 0.5 ? 0.5 : 1;
+    return `<div class="hcell" style="background:${bg};opacity:${op}"></div>`;
+  }).join('');
+
+  const el = document.getElementById('statsList');
+  if (!data.habits.length){ el.innerHTML = '<div class="empty">Пока нет привычек для статистики.</div>'; return; }
+  const days = [...Array(7)].map((_,i) => { const d = new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().slice(0,10); });
+  const dayLabels = days.map(k => new Date(k).toLocaleDateString('ru-RU',{weekday:'short'}));
+  el.innerHTML = data.habits.map(h => {
+    const streak = calcStreak(h);
+    const bars = days.map(k => (h.log||[]).includes(k)).map(v => `<div class="bar-col ${v?'fill':''}" style="height:${v?100:12}%"></div>`).join('');
+    return `<div class="stat-row">
+      <div class="top"><span class="name" style="color:${h.color}"><svg><use href="#ic-${h.icon}"/></svg><span style="color:var(--text)">${h.name}</span></span><span class="streak">🔥 ${streak}</span></div>
+      <div class="bars">${bars}</div>
+      <div class="daylabels">${dayLabels.map(l=>`<span>${l}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildIconRow(){
+  const row = document.getElementById('iconRow');
+  row.innerHTML = ICONS.map(i => `<button type="button" class="icon-btn ${i===selIcon?'sel':''}" data-i="${i}"><svg><use href="#ic-${i}"/></svg></button>`).join('');
+  row.querySelectorAll('.icon-btn').forEach(b => b.addEventListener('click', () => { selIcon = b.dataset.i; row.querySelectorAll('.icon-btn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); }));
+}
+function buildColorRow(){
+  const row = document.getElementById('colorRow');
+  row.innerHTML = COLORS.map((c,i) => `<button type="button" class="color-dot ${i===selColorIdx?'sel':''}" data-i="${i}" style="background:${c}"></button>`).join('');
+  row.querySelectorAll('.color-dot').forEach(b => b.addEventListener('click', () => { selColorIdx = +b.dataset.i; row.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); }));
+}
+document.getElementById('freqRow').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; selFreq = btn.dataset.freq; document.querySelectorAll('#freqRow button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); });
+
+function openSheet(habit){
+  editingId = habit ? habit.id : null;
+  document.getElementById('sheetTitle').textContent = habit ? 'Изменить привычку' : 'Новая привычка';
+  document.getElementById('inpName').value = habit ? habit.name : '';
+  selIcon = habit ? habit.icon : ICONS[0];
+  selColorIdx = habit ? Math.max(0, COLORS.indexOf(habit.color)) : 0;
+  selFreq = habit ? habit.freq : 'daily';
+  buildIconRow(); buildColorRow();
+  document.querySelectorAll('#freqRow button').forEach(b => b.classList.toggle('sel', b.dataset.freq === selFreq));
+  document.getElementById('btnDelete').style.display = habit ? 'block' : 'none';
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('fabAdd').addEventListener('click', () => { haptic('light'); openSheet(null); });
+document.getElementById('btnCancel').addEventListener('click', closeSheet);
+document.getElementById('overlay').addEventListener('click', (e) => { if (e.target.id === 'overlay') closeSheet(); });
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const name = document.getElementById('inpName').value.trim();
+  if (!name) return;
+  if (editingId){ const h = data.habits.find(x => x.id === editingId); h.name=name; h.icon=selIcon; h.color=COLORS[selColorIdx]; h.freq=selFreq; }
+  else data.habits.push({ id: Date.now().toString(), name, icon: selIcon, color: COLORS[selColorIdx], freq: selFreq, created: new Date().toISOString(), log: [] });
+  save(data); closeSheet(); renderHome(); renderStats(); haptic('medium');
+});
+document.getElementById('btnDelete').addEventListener('click', () => { data.habits = data.habits.filter(x => x.id !== editingId); save(data); closeSheet(); renderHome(); renderStats(); });
+
+document.querySelectorAll('.tabbar button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabbar button').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('screenHome').classList.toggle('active', tab === 'home');
+    document.getElementById('screenStats').classList.toggle('active', tab === 'stats');
+    if (tab === 'stats' && tg && tg.BackButton){ tg.BackButton.show(); tg.BackButton.onClick(() => document.querySelector('[data-tab=home]').click()); }
+    else if (tg && tg.BackButton){ tg.BackButton.hide(); }
+  });
+});
+
+renderHome(); renderStats();
+</script>
+</body>
+</html>
